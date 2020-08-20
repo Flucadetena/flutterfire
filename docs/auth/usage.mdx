@@ -170,7 +170,7 @@ listeners.
 
 Even though the above authentication flows sign a user into your application, they can provide any valid email address even if they
 do not have access to that email address. In many cases, you may wish to make a user verify the provided email address before you
-grant them full access to your application.
+grant them full access to your application (If this is your case you may prefer the `Email/Link` authentication method below).
 
 The [`User`](!firebase_auth.User) class provides a `sendEmailVerification()` method and `emailVerified` property which you can use to handle
 this scenario.
@@ -209,6 +209,84 @@ try {
 
 To learn more about how you can handle any errors which are thrown from the method, view the [Error Handling](error-handling)
 documentation.
+
+######
+
+## Email/Link Registration & Sign-in
+
+Email/Link is a simpler way of registering users into and app that automatically verifies their email. This requires the user to provide an email address
+where a link is send. When clicked the link will open the app and verify that user. With this authentication system Users are registered and/or Sign-in at the same time, with the `emailLinkSignIn()` method.
+
+To use this authentication method, make sure that on Firebase Console under "authetication > email/password" you have "Send link through email" switched on.
+
+### Sending the Email
+
+To create a new account or to sign-in an existing user on your Firebase project call the `sendSignInLinkToEmail()` method with the user's email address and the url of your deepLink, wich you can find in the "Dynamic Links" section in the Firebase Console.
+
+```dart
+try {
+   await FirebaseAuth.instance.sendSignInLinkToEmail(
+    email: "barry.allen@example.com",
+    actionCodeSettings: ActionCodeSettings(
+      url: "yourproject.page.link",
+      handleCodeInApp: true,
+      android: {
+        'packageName': 'com.example.android',
+        'installApp': true,
+        'minimumVersion': "1",
+      },
+      iOS: {
+        'bundleId': 'com.example.ios',
+      },
+    ),
+  );
+} catch (err) {
+  print(e.toString());
+}
+```
+
+The only required parameters are `email:` and `actionCodeSettings: ActionCodeSettings(url:)`. For all the other parameters, you can learn more about them here [ActionCodeSettings](https://firebase.google.com/docs/auth/web/passing-state-in-email-actions?hl=es-419#passing_statecontinue_url_in_email_actions)
+
+### Reciving the dynamic link
+
+First make sure you add [firebase_dynamic_links](https://pub.dev/packages/firebase_dynamic_links) to your pubspec.yaml. And that you have set-up "Dynamic Links" on Firebase Console.
+
+Now we can handle any link coming from your dynamic link url. Then you can handle the authentication link calling the `emailLinkSignIn()` method.
+
+Make sure to call `handleDynamicLinks()` in the build method of "MyApp" Widget.
+
+```dart
+Future handleDynamicLinks() async {
+  // 1. Get the initial dynamic link if the app is opened with a dynamic link
+  final PendingDynamicLinkData data =
+      await FirebaseDynamicLinks.instance.getInitialLink();
+
+  // 2. handle link that has been retrieved
+  _handleDeepLink(data);
+
+  // 3. Register a link callback to fire if the app is opened up from the background
+  // using a dynamic link.
+  FirebaseDynamicLinks.instance.onLink(
+      onSuccess: (PendingDynamicLinkData dynamicLink) async {
+    // 3a. handle link that has been retrieved
+    _handleDeepLink(dynamicLink);
+  }, onError: (OnLinkErrorException e) async {
+    print('Dynamic Link Failed: ${e.message}');
+  });
+}
+
+void _handleDeepLink(PendingDynamicLinkData data) async {
+  final Uri deepLink = data?.link;
+  print('$deepLink');
+  
+  if (deepLink != null && deepLink.pathSegments.contains('auth')) {
+      await AuthService().emailLinkSignIn(deepLink);
+  }
+}
+```
+
+Once successful, if you are listening to changes in [authentication state](#authentication-state), a new event will be sent to your
+listeners.
 
 ## Signing Out
 
