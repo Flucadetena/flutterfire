@@ -50,7 +50,8 @@ final class ChatSession {
   /// [sendMessageStream], these will not be reflected in the history.
   /// Messages without a candidate in the response are not recorded in history,
   /// including the message sent to the model.
-  Iterable<Content> get history => _history.skip(0);
+  /// ! FIX UNTIL THEY UPDATE WITH THE PULL REQUEST
+  Iterable<Content> get history => _googleAIChatSession.history.map((e) => e.toVertex());
 
   /// Sends [message] to the model as a continuation of the chat [history].
   ///
